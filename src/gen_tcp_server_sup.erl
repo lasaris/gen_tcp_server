@@ -45,7 +45,7 @@ start_link(Name, HandlerModule, Port, UserOpts) ->
 
 init([Name, HandlerModule, Port, UserOpts]) ->
 	%% Open listening socket
-	Opts = UserOpts ++ ?GEN_TCP_SERVER_OPTS,
+	Opts = UserOpts ++ ?GEN_TCP_SERVER_OPTS, %% TODO somehow define default GEN_TCP_SERVER_OPTS, but they must be able to be overridden in the handler module
 	{ok, LSocket} = gen_tcp:listen(Port, remove_opts(Opts)),
 	HandlerSpec = {gen_tcp_server_handler, {gen_tcp_server_handler, start_link, [LSocket, Name, HandlerModule]}, temporary, infinity, worker, [gen_tcp_server_handler]},
 	{ok, {{simple_one_for_one, 0, 1}, [HandlerSpec]}}.
