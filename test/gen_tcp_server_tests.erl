@@ -19,7 +19,7 @@
 %% @doc Eunit test suite for gen_tcp_server.
 -module(gen_tcp_server_tests).
 
--export([handle_accept/1,
+-export([handle_accept/2,
          handle_tcp/3]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -62,7 +62,7 @@ connection_test() ->
 %% gen_tcp_server callbacks
 %%------------------------------------------------------------------------------
 
-handle_accept(_) ->
+handle_accept(_, _) ->
     {ok, state}.
 
 handle_tcp(_, _, state) ->
@@ -78,7 +78,7 @@ init() ->
     put(sockets, []).
 
 start_the_server() ->
-    {ok, Pid} = gen_tcp_server:start_link(?MODULE, ?PORT),
+    {ok, Pid} = gen_tcp_server:start_link(server, ?MODULE, ?PORT),
     put(pid, Pid),
     timer:sleep(?TIMEOUT).
 

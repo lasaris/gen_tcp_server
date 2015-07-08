@@ -23,7 +23,7 @@
 -behaviour(gen_server).
 
 %% Internal API
--export([start_link/2]).
+-export([start_link/3]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -38,7 +38,8 @@
 	handler :: atom(),
 	lsocket :: term(),
 	socket :: term(),
-	state :: term()
+	state :: term(),
+	name :: atom()
 }).
 
 %%------------------------------------------------------------------------------
@@ -46,20 +47,18 @@
 %%------------------------------------------------------------------------------
 
 %% @doc Start gen_server.
--spec start_link(term(), atom()) -> {ok, pid()} | ignore | {error, term()}.
-start_link(LSocket, HandlerModule) ->
-	gen_server:start_link(?MODULE, [self(), LSocket, HandlerModule], []).
+-spec start_link(term(), atom(), atom()) -> {ok, pid()} | ignore | {error, term()}.
+start_link(LSocket, Name, HandlerModule) ->
+	gen_server:start_link(?MODULE, [self(), LSocket, Name, HandlerModule], []).
 
 %%------------------------------------------------------------------------------
 %% gen_server callbacks
 %%------------------------------------------------------------------------------
 
-init([Supervisor, LSocket, HandlerModule]) ->
+init([Supervisor, LSocket, Name, HandlerModule]) ->
 	%% Timeout 0 will send a timeout message to the gen_server
 	%% to handle gen_tcp:accept before any other message.
-	{ok, #state{supervisor = Supervisor,
-		handler = HandlerModule,
-		lsocket = LSocket}, 0}.
+	{ok, #state{supervisor = Supervisor, handler = HandlerModule, lsocket = LSocket, name = Name}, 0}.
 
 handle_call(_Request, _From, State) ->
 	{reply, ok, State}.
@@ -67,17 +66,15 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
 	{noreply, State}.
 
-handle_info(timeout, #state{supervisor = Supervisor, handler = HandlerModule,
-	lsocket = LSocket} = State) ->
+handle_info(timeout, #state{supervisor = Supervisor, handler = HandlerModule, lsocket = LSocket, name = Name} = State) ->
 	case gen_tcp:accept(LSocket) of
 		{ok, Socket} ->
 			%% Start new child to wait for the next connection.
 			supervisor:start_child(Supervisor, []),
 
-			case HandlerModule:handle_accept(Socket) of
+			case HandlerModule:handle_accept(Socket, Name) of
 				{ok, HandlerState} ->
-					{noreply, State#state{socket = Socket,
-						state = HandlerState}};
+					{noreply, State#state{socket = Socket, state = HandlerState}};
 				{stop, Reason} ->
 					{stop, {handle_accept_error, Reason}, State};
 				_ ->
@@ -86,9 +83,7 @@ handle_info(timeout, #state{supervisor = Supervisor, handler = HandlerModule,
 		{error, Reason} ->
 			{stop, {gen_tcp_accept_error, Reason}, State}
 	end;
-handle_info({tcp, Socket, Data}, #state{handler = HandlerModule,
-	socket = Socket,
-	state = HandlerState} = State) ->
+handle_info({tcp, Socket, Data}, #state{handler = HandlerModule, socket = Socket, state = HandlerState} = State) ->
 	inet:setopts(Socket, [{active, once}]),
 
 	case HandlerModule:handle_tcp(Socket, Data, HandlerState) of
@@ -106,8 +101,7 @@ handle_info({tcp_error, _Socket, Reason}, State) ->
 handle_info(_Info, State) ->
 	{noreply, State}.
 
-terminate(Reason, #state{handler = HandlerModule, socket = Socket,
-	state = HandlerState}) ->
+terminate(Reason, #state{handler = HandlerModule, socket = Socket, state = HandlerState}) ->
 	%% Close the sockets
 	if
 		Socket /= undefined ->
