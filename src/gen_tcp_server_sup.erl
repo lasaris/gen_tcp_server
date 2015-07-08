@@ -37,22 +37,22 @@
 %% @doc Start the handler supervisor.
 -spec start_link(atom(), integer(), term()) -> term().
 start_link(HandlerModule, Port, UserOpts) ->
-    supervisor:start_link(?MODULE, [HandlerModule, Port, UserOpts]).
+	supervisor:start_link(?MODULE, [HandlerModule, Port, UserOpts]).
 
 %%------------------------------------------------------------------------------
 %% Supervisor callbacks
 %%------------------------------------------------------------------------------
 
 init([HandlerModule, Port, UserOpts]) ->
-    %% Open listening socket
-    Opts = UserOpts ++ ?GEN_TCP_SERVER_OPTS,
-    {ok, LSocket} = gen_tcp:listen(Port, remove_opts(Opts)),
+	%% Open listening socket
+	Opts = UserOpts ++ ?GEN_TCP_SERVER_OPTS,
+	{ok, LSocket} = gen_tcp:listen(Port, remove_opts(Opts)),
 
-    HandlerSpec = {gen_tcp_server_handler,
-                   {gen_tcp_server_handler, start_link, [LSocket,
-                                                         HandlerModule]},
-                   temporary, infinity, worker, [gen_tcp_server_handler]},
-    {ok, {{simple_one_for_one, 0, 1}, [HandlerSpec]}}.
+	HandlerSpec = {gen_tcp_server_handler,
+		{gen_tcp_server_handler, start_link, [LSocket,
+			HandlerModule]},
+		temporary, infinity, worker, [gen_tcp_server_handler]},
+	{ok, {{simple_one_for_one, 0, 1}, [HandlerSpec]}}.
 
 %%------------------------------------------------------------------------------
 %% Helper functions
@@ -60,11 +60,11 @@ init([HandlerModule, Port, UserOpts]) ->
 
 %% @doc Remove custom opts.
 remove_opts(Opts) ->
-    remove_opts(Opts, Opts).
+	remove_opts(Opts, Opts).
 
 remove_opts([], Opts) ->
-    Opts;
+	Opts;
 remove_opts([{pool, _} | Rest], _Opts) ->
-    remove_opts(Rest, Rest);
+	remove_opts(Rest, Rest);
 remove_opts([_ | Rest], Opts) ->
-    remove_opts(Rest, Opts).
+	remove_opts(Rest, Opts).
